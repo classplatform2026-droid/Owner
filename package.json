@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "tsx server.ts",
-    "start": "NODE_ENV=production node --loader tsx server.ts",
+    "start": "NODE_ENV=production node --import tsx server.ts",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js node_modules",
