@@ -22,7 +22,7 @@
       "phone": "+880 1712-000001",
       "status": "active",
       "createdAt": "2026-10-02T04:46:40.635Z",
-      "lastLogin": "2026-10-02T11:18:03.893Z",
+      "lastLogin": "2026-10-02T12:31:43.595Z",
       "storeId": "store_001",
       "pinHash": "$2b$10$WwAQ0u50CdQqsp5apmQPpuNykSeBwvHgCt6mOwpmDziFYBjxf.Pte"
     },
@@ -603,6 +603,24 @@
     }
   ],
   "audit_logs": [
+    {
+      "storeId": "store_001",
+      "userId": "usr_admin",
+      "userName": "Admin Manager",
+      "action": "LOGIN",
+      "details": "User logged in to store store_001 with role SuperAdmin",
+      "_id": "log_1790944303599_482",
+      "timestamp": "2026-10-02T12:31:43.599Z"
+    },
+    {
+      "storeId": "store_001",
+      "userId": "usr_admin",
+      "userName": "Admin Manager",
+      "action": "LOGIN",
+      "details": "User logged in to store store_001 with role SuperAdmin",
+      "_id": "log_1790939912273_229",
+      "timestamp": "2026-10-02T11:18:32.273Z"
+    },
     {
       "storeId": "store_001",
       "userId": "admin_console",

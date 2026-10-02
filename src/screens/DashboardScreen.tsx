@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   TrendingUp,
   DollarSign,
@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import { usePos } from '../context/PosContext';
 import { ProductThumb } from '../components/ProductThumb';
-import { SALES_TREND_DATA } from '../data/mockData';
 
 export const DashboardScreen: React.FC = () => {
   const {
@@ -34,82 +33,122 @@ export const DashboardScreen: React.FC = () => {
     y: number;
   } | null>(null);
 
-  // Compute stats dynamically from state
-  const completedSales = sales.filter((s) => s.status === 'completed');
-  const todaySalesTotal = completedSales.reduce((acc, s) => acc + s.total, 0);
-
-  // Approximate today's profit: ~24% margin typical for grocery/retail, plus item level cost
-  const todayProfitTotal = Math.round(
-    completedSales.reduce((acc, s) => {
-      const itemsCost = s.items.reduce((c, i) => {
-        const prod = products.find((p) => p.id === i.productId);
-        const unitCost = prod ? prod.costPrice : i.unitPrice * 0.75;
-        return c + unitCost * i.quantity;
-      }, 0);
-      return acc + (s.total - itemsCost);
-    }, 0)
+  // Compute stats dynamically from MongoDB sales and products
+  const completedSales = useMemo(() => sales.filter((s) => s.status === 'completed'), [sales]);
+  const todaySalesTotal = useMemo(
+    () => completedSales.reduce((acc, s) => acc + s.total, 0),
+    [completedSales]
   );
 
-  const totalProductsCount = products.length * 80 + 4; // realistic catalog count like 1,284
-  const lowStockProducts = products.filter((p) => p.stock <= p.lowStockThreshold);
-  const lowStockCount = lowStockProducts.length > 0 ? lowStockProducts.length : 23;
+  // Profit calculated from actual MongoDB product cost prices and sales
+  const todayProfitTotal = useMemo(() => {
+    return Math.round(
+      completedSales.reduce((acc, s) => {
+        const itemsCost = s.items.reduce((c, i) => {
+          const prod = products.find((p) => p.id === i.productId);
+          const unitCost = prod ? prod.costPrice : i.unitPrice * 0.75;
+          return c + unitCost * i.quantity;
+        }, 0);
+        return acc + (s.total - itemsCost);
+      }, 0)
+    );
+  }, [completedSales, products]);
 
-  // Top selling products
-  const topSellers = [
-    {
-      id: 'prod-1',
-      name: 'Rice (5KG)',
-      sold: 120,
-      price: 1200,
-      iconType: 'rice',
-      category: 'Grocery',
-    },
-    {
-      id: 'prod-2',
-      name: 'Cooking Oil (1L)',
-      sold: 98,
-      price: 980,
-      iconType: 'oil',
-      category: 'Grocery',
-    },
-    {
-      id: 'prod-3',
-      name: 'Sugar (1KG)',
-      sold: 76,
-      price: 760,
-      iconType: 'sugar',
-      category: 'Grocery',
-    },
-    {
-      id: 'prod-7',
-      name: 'Tea (250G)',
-      sold: 65,
-      price: 650,
-      iconType: 'tea',
-      category: 'Beverages',
-    },
-    {
-      id: 'prod-10',
-      name: 'Mobile Charger',
-      sold: 52,
-      price: 1040,
-      iconType: 'charger',
-      category: 'Electronics',
-    },
-  ];
+  // Real MongoDB counts
+  const totalProductsCount = products.length;
+  const lowStockProducts = useMemo(
+    () => products.filter((p) => p.stock <= p.lowStockThreshold),
+    [products]
+  );
+  const lowStockCount = lowStockProducts.length;
+
+  // Real Top Selling Products aggregated from MongoDB sales
+  const topSellers = useMemo(() => {
+    const salesCountMap: Record<
+      string,
+      { id: string; name: string; sold: number; price: number; iconType: string; category: string }
+    > = {};
+
+    for (const sale of completedSales) {
+      for (const item of sale.items) {
+        if (!salesCountMap[item.productId]) {
+          const prod = products.find((p) => p.id === item.productId);
+          salesCountMap[item.productId] = {
+            id: item.productId,
+            name: item.productName || prod?.name || 'Product',
+            sold: 0,
+            price: item.unitPrice || prod?.price || 0,
+            iconType: prod?.iconType || 'package',
+            category: prod?.category || 'General',
+          };
+        }
+        salesCountMap[item.productId].sold += item.quantity;
+      }
+    }
+
+    const sorted = Object.values(salesCountMap).sort((a, b) => b.sold - a.sold);
+    if (sorted.length > 0) {
+      return sorted.slice(0, 5);
+    }
+
+    // If no sales completed yet, display top products by price from MongoDB catalog
+    return products.slice(0, 5).map((p) => ({
+      id: p.id,
+      name: p.name,
+      sold: 0,
+      price: p.price,
+      iconType: p.iconType,
+      category: p.category,
+    }));
+  }, [completedSales, products]);
 
   // SVG Chart Dimensions
   const chartWidth = 540;
   const chartHeight = 220;
   const paddingX = 40;
   const paddingY = 30;
-  const minVal = 0;
-  const maxVal = 20000;
 
-  const points = SALES_TREND_DATA.map((d, i) => {
+  // Real 7-day Sales Trend computed dynamically from MongoDB sales
+  const trendData = useMemo(() => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const now = new Date();
+    const result: { day: string; sales: number; transactions: number }[] = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const dayName = days[d.getDay()];
+
+      const daySales = completedSales.filter(
+        (s) => s.createdAt && s.createdAt.startsWith(dateStr)
+      );
+      const dayTotal = daySales.reduce((sum, s) => sum + s.total, 0);
+
+      result.push({
+        day: dayName,
+        sales: dayTotal,
+        transactions: daySales.length,
+      });
+    }
+
+    // If new store with today's sales
+    const hasAnySales = result.some((r) => r.sales > 0);
+    if (!hasAnySales && todaySalesTotal > 0) {
+      result[result.length - 1].sales = todaySalesTotal;
+      result[result.length - 1].transactions = completedSales.length;
+    }
+
+    return result;
+  }, [completedSales, todaySalesTotal]);
+
+  const maxVal = Math.max(5000, Math.ceil(Math.max(...trendData.map((d) => d.sales), 1000) * 1.3));
+  const minVal = 0;
+
+  const points = trendData.map((d, i) => {
     const x =
       paddingX +
-      (i / (SALES_TREND_DATA.length - 1)) * (chartWidth - paddingX * 2);
+      (i / Math.max(1, trendData.length - 1)) * (chartWidth - paddingX * 2);
     const y =
       chartHeight -
       paddingY -
@@ -119,7 +158,6 @@ export const DashboardScreen: React.FC = () => {
 
   const pathD = points.reduce((acc, p, idx) => {
     if (idx === 0) return `M ${p.x},${p.y}`;
-    // Smooth cubic curve
     const prev = points[idx - 1];
     const cpX = (prev.x + p.x) / 2;
     return `${acc} C ${cpX},${prev.y} ${cpX},${p.y} ${p.x},${p.y}`;
@@ -343,7 +381,7 @@ export const DashboardScreen: React.FC = () => {
               </defs>
 
               {/* Y Grid lines and labels */}
-              {[20000, 15000, 10000, 5000, 0].map((val) => {
+              {[maxVal, Math.round(maxVal * 0.75), Math.round(maxVal * 0.5), Math.round(maxVal * 0.25), 0].map((val) => {
                 const y =
                   chartHeight -
                   paddingY -
@@ -367,7 +405,7 @@ export const DashboardScreen: React.FC = () => {
                       fill="#94A3B8"
                       fontFamily="sans-serif"
                     >
-                      {val === 0 ? '0' : `${val / 1000}k`}
+                      {val === 0 ? '0' : val >= 1000 ? `${Math.round(val / 1000)}k` : `${val}`}
                     </text>
                   </g>
                 );

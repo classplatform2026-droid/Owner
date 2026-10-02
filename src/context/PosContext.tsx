@@ -126,27 +126,19 @@ interface PosContextType {
 const PosContext = createContext<PosContextType | undefined>(undefined);
 
 export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
-  const [sales, setSales] = useState<Sale[]>(INITIAL_SALES);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
   const [storeInfo, setStoreInfo] = useState<StoreInfo>(INITIAL_STORE_INFO);
-  const [staffUsers, setStaffUsers] = useState<StaffUser[]>(STAFF_USERS);
-  const [categories, setCategories] = useState<string[]>([
-    'Grocery',
-    'Beverages',
-    'Snacks',
-    'Electronics',
-    'Fashion',
-    'Household',
-    'Personal Care',
-    'Dairy & Eggs',
-    'Bakery',
-  ]);
+  const [staffUsers, setStaffUsers] = useState<StaffUser[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [currentUser, setCurrentUser] = useState<StaffUser | null>(() => {
     try {
+      const token = localStorage.getItem('shoppos_jwt_token');
+      if (!token) return null;
       const saved = localStorage.getItem('shoppos_current_user');
-      return saved ? JSON.parse(saved) : STAFF_USERS[0];
+      return saved ? JSON.parse(saved) : null;
     } catch {
-      return STAFF_USERS[0];
+      return null;
     }
   });
 
@@ -169,84 +161,102 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [cashReceived, setCashReceived] = useState<string>('');
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  // Sync session & load from backend
+  // Sync session & load from backend MongoDB database
   const fetchAllData = useCallback(async () => {
     setIsLoading(true);
     try {
       // Fetch DB status
       api.getDbStatus().then(setDbStatus).catch(() => {});
 
-      // Fetch Store
+      const token = getStoredToken();
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Fetch Store from MongoDB
       api.getStore().then((res) => {
         if (res.store) {
           setStoreInfo(res.store);
           if (res.store.subscription?.status === 'expired') {
             setSubscriptionExpired(true);
+          } else {
+            setSubscriptionExpired(false);
           }
         }
-      }).catch(() => {});
+      }).catch((err) => {
+        console.warn('[MongoDB] Store fetch notice:', err.message);
+      });
 
-      // Fetch Categories
+      // Fetch Categories from MongoDB
       api.getCategories().then((res) => {
-        if (res.categories && res.categories.length > 0) {
+        if (res.categories) {
           setCategories(res.categories);
         }
-      }).catch(() => {});
+      }).catch((err) => {
+        console.warn('[MongoDB] Categories fetch notice:', err.message);
+      });
 
-      // Fetch Products
+      // Fetch Products from MongoDB
       api.getProducts().then((res) => {
-        if (res.products && res.products.length > 0) {
+        if (res.products) {
           setProducts(res.products);
         }
-      }).catch(() => {});
+      }).catch((err) => {
+        console.warn('[MongoDB] Products fetch notice:', err.message);
+      });
 
-      // Fetch Sales
+      // Fetch Sales from MongoDB
       api.getSales().then((res) => {
-        if (res.sales && res.sales.length > 0) {
+        if (res.sales) {
           setSales(res.sales);
         }
-      }).catch(() => {});
+      }).catch((err) => {
+        console.warn('[MongoDB] Sales fetch notice:', err.message);
+      });
 
-      // If user is logged in, check profile & load users list
-      if (getStoredToken()) {
-        api.getMe().then((res) => {
-          if (res.user) {
-            const normalizedUser: StaffUser = {
-              id: res.user._id,
-              storeId: res.user.storeId,
-              name: res.user.name,
-              email: res.user.email,
-              role: res.user.role,
-              avatarInitials: res.user.name.charAt(0).toUpperCase(),
-              pin: res.user.pin,
-              permissions: res.user.permissions,
-              status: res.user.status,
-              phone: res.user.phone,
-              lastLogin: res.user.lastLogin,
-            };
-            setCurrentUser(normalizedUser);
-          }
-        }).catch(() => {});
+      // Fetch Authenticated User & Staff from MongoDB
+      api.getMe().then((res) => {
+        if (res.user) {
+          const normalizedUser: StaffUser = {
+            id: res.user._id,
+            storeId: res.user.storeId,
+            name: res.user.name,
+            email: res.user.email,
+            role: res.user.role,
+            avatarInitials: res.user.name.charAt(0).toUpperCase(),
+            pin: res.user.pin,
+            permissions: res.user.permissions,
+            status: res.user.status,
+            phone: res.user.phone,
+            lastLogin: res.user.lastLogin,
+          };
+          setCurrentUser(normalizedUser);
+        }
+      }).catch((err) => {
+        console.warn('[MongoDB] User profile notice:', err.message);
+      });
 
-        api.getUsers().then((res) => {
-          if (res.users && res.users.length > 0) {
-            const mapped = res.users.map((u) => ({
-              id: u._id,
-              storeId: u.storeId,
-              name: u.name,
-              email: u.email,
-              role: u.role,
-              avatarInitials: u.name.charAt(0).toUpperCase(),
-              pin: u.pin,
-              permissions: u.permissions,
-              status: u.status,
-              phone: u.phone,
-              lastLogin: u.lastLogin,
-            }));
-            setStaffUsers(mapped);
-          }
-        }).catch(() => {});
-      }
+      api.getUsers().then((res) => {
+        if (res.users) {
+          const mapped = res.users.map((u) => ({
+            id: u._id,
+            storeId: u.storeId,
+            name: u.name,
+            email: u.email,
+            role: u.role,
+            avatarInitials: u.name.charAt(0).toUpperCase(),
+            pin: u.pin,
+            permissions: u.permissions,
+            status: u.status,
+            phone: u.phone,
+            lastLogin: u.lastLogin,
+          }));
+          setStaffUsers(mapped);
+        }
+      }).catch((err) => {
+        console.warn('[MongoDB] Staff users notice:', err.message);
+      });
     } finally {
       setIsLoading(false);
     }
@@ -826,8 +836,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSocketConnected(false);
     setCurrentUser(null);
     setStoredToken(null);
+    setCart([]);
     try {
       localStorage.removeItem('shoppos_current_user');
+      localStorage.removeItem('shoppos_jwt_token');
     } catch {}
   };
 
@@ -856,10 +868,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const resetToDemoData = () => {
-    setProducts(INITIAL_PRODUCTS);
-    setSales(INITIAL_SALES);
-    setStoreInfo(INITIAL_STORE_INFO);
-    setCurrentUser(STAFF_USERS[0]);
+    fetchAllData();
     clearCart();
   };
 

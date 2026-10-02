@@ -10,7 +10,6 @@ import {
   Check,
 } from 'lucide-react';
 import { usePos, ScreenType } from '../context/PosContext';
-import { STORE_PRESETS } from '../data/mockData';
 
 export const Sidebar: React.FC = () => {
   const {
