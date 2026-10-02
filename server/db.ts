@@ -1,4 +1,4 @@
-import { MongoClient, Db } from 'mongodb';
+import { MongoClient, Db, ObjectId } from 'mongodb';
 import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
@@ -12,6 +12,60 @@ import {
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'shoppos';
+
+// Mongoose & MongoDB ObjectId/String Compatibility Helpers
+export function buildIdQuery(id: string | any) {
+  if (!id) return { _id: id };
+  const strId = id.toString();
+  if (ObjectId.isValid(strId) && strId.length === 24) {
+    try {
+      const objId = new ObjectId(strId);
+      return { $or: [{ _id: strId }, { _id: objId }] };
+    } catch {
+      return { _id: strId };
+    }
+  }
+  return { _id: strId };
+}
+
+export function buildStoreQuery(storeId: string | any) {
+  if (!storeId) return { storeId };
+  const strId = storeId.toString();
+  if (ObjectId.isValid(strId) && strId.length === 24) {
+    try {
+      const objId = new ObjectId(strId);
+      return { $or: [{ storeId: strId }, { storeId: objId }] };
+    } catch {
+      return { storeId: strId };
+    }
+  }
+  return { storeId: strId };
+}
+
+export function normalizeDoc<T>(doc: any): T {
+  if (!doc) return doc;
+  const normalized = { ...doc };
+  if (doc._id) {
+    normalized._id = doc._id.toString();
+    normalized.id = doc._id.toString();
+  }
+  if (doc.storeId) {
+    normalized.storeId = doc.storeId.toString();
+  }
+  if (doc.ownerId) {
+    normalized.ownerId = doc.ownerId.toString();
+  }
+  if (doc.createdAt instanceof Date) {
+    normalized.createdAt = doc.createdAt.toISOString();
+  }
+  if (doc.updatedAt instanceof Date) {
+    normalized.updatedAt = doc.updatedAt.toISOString();
+  }
+  if (doc.timestamp instanceof Date) {
+    normalized.timestamp = doc.timestamp.toISOString();
+  }
+  return normalized as T;
+}
 
 // Multi-tenant Document Schemas
 export interface StoreSubscription {
@@ -27,6 +81,7 @@ export interface StoreSubscription {
 
 export interface StoreDoc {
   _id: string; // e.g. "store_001", "store_002"
+  id?: string;
   ownerId: string; // e.g. "usr_admin", "usr_owner_002"
   name: string;
   branch: string;
@@ -42,21 +97,26 @@ export interface StoreDoc {
   subscription: StoreSubscription;
   createdAt?: string;
   updatedAt?: string;
+  __v?: number;
 }
 
 export interface UserDoc {
   _id: string;
+  id?: string;
   storeId: string; // Multi-tenant binding
   name: string;
   email: string;
-  passwordHash: string;
-  pinHash: string; // Bcrypt hashed PIN (no plaintext PIN)
+  passwordHash?: string;
+  password?: string; // Mongoose compatibility
+  pinHash?: string; // Bcrypt hashed PIN (no plaintext PIN)
+  pin?: string;
   role: 'SuperAdmin' | 'Admin' | 'Manager' | 'Cashier';
   permissions: string[];
   phone?: string;
   status: 'active' | 'suspended';
   createdAt: string;
   lastLogin?: string;
+  __v?: number;
 }
 
 export interface CategoryDoc {
@@ -810,6 +870,18 @@ async function loadLocalDb(initialData: Awaited<ReturnType<typeof seedInitialDat
         parsed.stores = initialData.initialStores;
         migrated = true;
       } else {
+        // Migrate legacy store_default id to store_001
+        for (const s of parsed.stores) {
+          if (s._id === 'store_default') {
+            s._id = 'store_001';
+            migrated = true;
+          }
+        }
+        if (!parsed.stores.find((s: StoreDoc) => s._id === 'store_001')) {
+          parsed.stores.unshift(initialData.initialStores[0]);
+          migrated = true;
+        }
+
         // If store doesn't have ownerId or store_002 is missing
         if (!parsed.stores[0].ownerId) {
           parsed.stores[0].ownerId = 'usr_admin';
@@ -947,6 +1019,51 @@ async function loadLocalDb(initialData: Awaited<ReturnType<typeof seedInitialDat
   saveLocalDb();
 }
 
+// MongoDB Change Stream Setup for Realtime Cross-Service Synchronization
+function setupMongoChangeStreams(db: Db) {
+  try {
+    const storesCollection = db.collection('stores');
+    const changeStream = storesCollection.watch([], { fullDocument: 'updateLookup' });
+
+    changeStream.on('change', (change: any) => {
+      console.log(`[MongoDB Change Stream] Store change detected: ${change.operationType}`);
+      if (change.operationType === 'update' || change.operationType === 'replace') {
+        const fullDoc = change.fullDocument;
+        if (!fullDoc) return;
+        const storeId = fullDoc._id ? fullDoc._id.toString() : '';
+        if (!storeId) return;
+
+        // Check account suspension / activation
+        if (fullDoc.status === 'suspended') {
+          emitAccountSuspended(storeId, 'Your account has been suspended. Please contact support.');
+        } else if (fullDoc.status === 'active') {
+          emitAccountActivated(storeId);
+        }
+
+        // Check subscription updates
+        if (fullDoc.subscription) {
+          const sub = fullDoc.subscription as StoreSubscription;
+          if (sub.paymentStatus === 'approved') {
+            emitPaymentApproved(storeId, sub.lastPaymentId || `pay_${Date.now()}`, sub);
+          } else if (sub.status === 'expired') {
+            emitSubscriptionExpired(storeId);
+          } else {
+            emitSubscriptionUpdated(storeId, sub);
+          }
+        }
+      }
+    });
+
+    changeStream.on('error', (err) => {
+      console.warn('[MongoDB Change Stream] Note (MongoDB Atlas/Replica set required for change streams):', err.message);
+    });
+
+    console.log('[MongoDB Change Stream] Realtime change stream active on stores collection.');
+  } catch (err) {
+    console.warn('[MongoDB Change Stream] Setup notice:', (err as Error).message);
+  }
+}
+
 // Connect to Database and create multi-tenant indexes
 export async function initDatabase() {
   const initialData = await seedInitialData();
@@ -993,6 +1110,9 @@ export async function initDatabase() {
         await (nativeDb.collection<any>('sales')).insertMany(initialData.initialSales);
         await (nativeDb.collection<any>('audit_logs')).insertMany(initialData.initialAuditLogs);
       }
+
+      // Attach MongoDB change stream for cross-service sync with Admin.pos
+      setupMongoChangeStreams(nativeDb);
       return;
     } catch (err) {
       console.warn(
@@ -1046,9 +1166,14 @@ export function getDbStatus(storeId?: string) {
 export const StoreRepo = {
   async getStore(storeId: string): Promise<StoreDoc | null> {
     if (isUsingRemoteMongo && nativeDb) {
-      return (await nativeDb.collection<any>('stores').findOne({ _id: storeId })) as StoreDoc | null;
+      const doc = await nativeDb.collection<any>('stores').findOne(buildIdQuery(storeId));
+      return normalizeDoc<StoreDoc>(doc);
     }
-    return localDb.stores.find((s) => s._id === storeId) || null;
+    const local =
+      localDb.stores.find(
+        (s) => s._id === storeId || (s as any).id === storeId || (storeId === 'store_001' && s._id === 'store_default')
+      ) || null;
+    return normalizeDoc<StoreDoc>(local);
   },
 
   async updateStore(storeId: string, updates: Partial<StoreDoc>): Promise<StoreDoc | null> {
@@ -1062,14 +1187,14 @@ export const StoreRepo = {
     if (isUsingRemoteMongo && nativeDb) {
       await nativeDb
         .collection<any>('stores')
-        .updateOne({ _id: storeId }, { $set: { ...safeUpdates, updatedAt } });
+        .updateOne(buildIdQuery(storeId), { $set: { ...safeUpdates, updatedAt } });
       updatedStore = await StoreRepo.getStore(storeId);
     } else {
-      const idx = localDb.stores.findIndex((s) => s._id === storeId);
+      const idx = localDb.stores.findIndex((s) => s._id === storeId || (s as any).id === storeId);
       if (idx !== -1) {
         localDb.stores[idx] = { ...localDb.stores[idx], ...safeUpdates, updatedAt };
         saveLocalDb();
-        updatedStore = localDb.stores[idx];
+        updatedStore = normalizeDoc<StoreDoc>(localDb.stores[idx]);
       }
     }
 
@@ -1203,9 +1328,10 @@ export const StoreRepo = {
 
   async getAllStores(): Promise<StoreDoc[]> {
     if (isUsingRemoteMongo && nativeDb) {
-      return (await nativeDb.collection<any>('stores').find({}).toArray()) as StoreDoc[];
+      const docs = await nativeDb.collection<any>('stores').find({}).toArray();
+      return docs.map((d: any) => normalizeDoc<StoreDoc>(d));
     }
-    return localDb.stores;
+    return localDb.stores.map((s) => normalizeDoc<StoreDoc>(s));
   },
 };
 
@@ -1214,11 +1340,13 @@ export const UsersRepo = {
   // Global find by email for login (reveals their storeId)
   async findByEmail(email: string): Promise<UserDoc | null> {
     if (isUsingRemoteMongo && nativeDb) {
-      return (await nativeDb.collection<any>('users').findOne({
+      const doc = await nativeDb.collection<any>('users').findOne({
         email: { $regex: new RegExp(`^${email}$`, 'i') },
-      })) as UserDoc | null;
+      });
+      return normalizeDoc<UserDoc>(doc);
     }
-    return localDb.users.find((u) => u.email.toLowerCase() === email.toLowerCase()) || null;
+    const doc = localDb.users.find((u) => u.email.toLowerCase() === email.toLowerCase()) || null;
+    return normalizeDoc<UserDoc>(doc);
   },
 
   // Find user by PIN comparison (supports direct terminal PIN login across users)
@@ -1238,13 +1366,13 @@ export const UsersRepo = {
     for (const candidate of candidateUsers) {
       if (candidate.pinHash) {
         const matches = await bcrypt.compare(pin, candidate.pinHash);
-        if (matches) return candidate;
+        if (matches) return normalizeDoc<UserDoc>(candidate);
       } else if ((candidate as any).pin && (candidate as any).pin === pin) {
         // Migrate legacy plaintext pin to pinHash on the fly
         const salt = await bcrypt.genSalt(10);
         const pinHash = await bcrypt.hash(pin, salt);
         await UsersRepo.update(candidate.storeId, candidate._id, { pinHash });
-        return { ...candidate, pinHash };
+        return normalizeDoc<UserDoc>({ ...candidate, pinHash });
       }
     }
     return null;
@@ -1252,25 +1380,30 @@ export const UsersRepo = {
 
   async findById(id: string): Promise<UserDoc | null> {
     if (isUsingRemoteMongo && nativeDb) {
-      return (await nativeDb.collection<any>('users').findOne({ _id: id })) as UserDoc | null;
+      const doc = await nativeDb.collection<any>('users').findOne(buildIdQuery(id));
+      return normalizeDoc<UserDoc>(doc);
     }
-    return localDb.users.find((u) => u._id === id) || null;
+    const doc = localDb.users.find((u) => u._id === id || (u as any).id === id) || null;
+    return normalizeDoc<UserDoc>(doc);
   },
 
   // Scoped strictly to storeId
   async getAll(storeId: string): Promise<Omit<UserDoc, 'passwordHash' | 'pinHash'>[]> {
     if (isUsingRemoteMongo && nativeDb) {
-      const users = await nativeDb.collection<any>('users').find({ storeId }).toArray();
-      return users.map(({ passwordHash: _, pinHash: __, ...rest }: any) => rest);
+      const users = await nativeDb.collection<any>('users').find(buildStoreQuery(storeId)).toArray();
+      return users.map(({ passwordHash: _, pinHash: __, ...rest }: any) => normalizeDoc(rest));
     }
     return localDb.users
       .filter((u) => u.storeId === storeId)
-      .map(({ passwordHash: _, pinHash: __, ...rest }) => rest);
+      .map(({ passwordHash: _, pinHash: __, ...rest }) => normalizeDoc(rest));
   },
 
   async create(user: Omit<UserDoc, '_id' | 'createdAt'>): Promise<UserDoc> {
+    const pw = (user as any).passwordHash || (user as any).password || '';
     const newDoc: UserDoc = {
       ...user,
+      password: pw,
+      passwordHash: pw,
       _id: `usr_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
       createdAt: new Date().toISOString(),
     };
@@ -1281,34 +1414,43 @@ export const UsersRepo = {
       localDb.users.push(newDoc);
       saveLocalDb();
     }
-    return newDoc;
+    return normalizeDoc<UserDoc>(newDoc);
   },
 
   // Update scoped to storeId
   async update(storeId: string, id: string, updates: Partial<UserDoc>): Promise<UserDoc | null> {
     const { _id: _, storeId: __, ...safeUpdates } = updates as any;
+    if (safeUpdates.passwordHash && !safeUpdates.password) {
+      safeUpdates.password = safeUpdates.passwordHash;
+    }
 
     if (isUsingRemoteMongo && nativeDb) {
-      await nativeDb.collection<any>('users').updateOne({ _id: id, storeId }, { $set: safeUpdates });
+      await nativeDb.collection<any>('users').updateOne(
+        { ...buildIdQuery(id), ...buildStoreQuery(storeId) },
+        { $set: safeUpdates }
+      );
       return UsersRepo.findById(id);
     }
 
-    const idx = localDb.users.findIndex((u) => u._id === id && u.storeId === storeId);
+    const idx = localDb.users.findIndex((u) => (u._id === id || (u as any).id === id) && u.storeId === storeId);
     if (idx === -1) return null;
     localDb.users[idx] = { ...localDb.users[idx], ...safeUpdates };
     saveLocalDb();
-    return localDb.users[idx];
+    return normalizeDoc<UserDoc>(localDb.users[idx]);
   },
 
   // Delete scoped to storeId
   async delete(storeId: string, id: string): Promise<boolean> {
     if (isUsingRemoteMongo && nativeDb) {
-      const res = await nativeDb.collection<any>('users').deleteOne({ _id: id, storeId });
+      const res = await nativeDb.collection<any>('users').deleteOne({
+        ...buildIdQuery(id),
+        ...buildStoreQuery(storeId),
+      });
       return (res.deletedCount || 0) > 0;
     }
 
     const lenBefore = localDb.users.length;
-    localDb.users = localDb.users.filter((u) => !(u._id === id && u.storeId === storeId));
+    localDb.users = localDb.users.filter((u) => !((u._id === id || (u as any).id === id) && u.storeId === storeId));
     saveLocalDb();
     return localDb.users.length < lenBefore;
   },
@@ -1318,7 +1460,7 @@ export const UsersRepo = {
 export const CategoriesRepo = {
   async getAll(storeId: string): Promise<string[]> {
     if (isUsingRemoteMongo && nativeDb) {
-      const docs = await nativeDb.collection<any>('categories').find({ storeId }).toArray();
+      const docs = await nativeDb.collection<any>('categories').find(buildStoreQuery(storeId)).toArray();
       return docs.map((d: any) => d.name);
     }
     return localDb.categories.filter((c) => c.storeId === storeId).map((c) => c.name);
@@ -1330,7 +1472,7 @@ export const CategoriesRepo = {
 
     if (isUsingRemoteMongo && nativeDb) {
       const existing = await nativeDb.collection<any>('categories').findOne({
-        storeId,
+        ...buildStoreQuery(storeId),
         name: { $regex: new RegExp(`^${trimmed}$`, 'i') },
       });
       if (!existing) {
@@ -1363,7 +1505,7 @@ export const CategoriesRepo = {
     const trimmed = name.trim();
     if (isUsingRemoteMongo && nativeDb) {
       await nativeDb.collection<any>('categories').deleteOne({
-        storeId,
+        ...buildStoreQuery(storeId),
         name: { $regex: new RegExp(`^${trimmed}$`, 'i') },
       });
       return true;
@@ -1381,16 +1523,19 @@ export const CategoriesRepo = {
 export const ProductsRepo = {
   async getAll(storeId: string): Promise<ProductDoc[]> {
     if (isUsingRemoteMongo && nativeDb) {
-      return await nativeDb.collection<any>('products').find({ storeId }).toArray();
+      const docs = await nativeDb.collection<any>('products').find(buildStoreQuery(storeId)).toArray();
+      return docs.map((d: any) => normalizeDoc<ProductDoc>(d));
     }
-    return localDb.products.filter((p) => p.storeId === storeId);
+    return localDb.products.filter((p) => p.storeId === storeId).map((p) => normalizeDoc<ProductDoc>(p));
   },
 
   async findById(storeId: string, id: string): Promise<ProductDoc | null> {
     if (isUsingRemoteMongo && nativeDb) {
-      return (await nativeDb.collection<any>('products').findOne({ _id: id, storeId })) as ProductDoc | null;
+      const doc = await nativeDb.collection<any>('products').findOne({ ...buildIdQuery(id), ...buildStoreQuery(storeId) });
+      return normalizeDoc<ProductDoc>(doc);
     }
-    return localDb.products.find((p) => p._id === id && p.storeId === storeId) || null;
+    const doc = localDb.products.find((p) => (p._id === id || (p as any).id === id) && p.storeId === storeId) || null;
+    return normalizeDoc<ProductDoc>(doc);
   },
 
   async create(prod: Omit<ProductDoc, '_id'>): Promise<ProductDoc> {
@@ -1407,7 +1552,7 @@ export const ProductsRepo = {
       localDb.products.push(newDoc);
       saveLocalDb();
     }
-    return newDoc;
+    return normalizeDoc<ProductDoc>(newDoc);
   },
 
   async update(storeId: string, id: string, updates: Partial<ProductDoc>): Promise<ProductDoc | null> {
@@ -1417,15 +1562,15 @@ export const ProductsRepo = {
     if (isUsingRemoteMongo && nativeDb) {
       await nativeDb
         .collection<any>('products')
-        .updateOne({ _id: id, storeId }, { $set: { ...safeUpdates, updatedAt } });
+        .updateOne({ ...buildIdQuery(id), ...buildStoreQuery(storeId) }, { $set: { ...safeUpdates, updatedAt } });
       return ProductsRepo.findById(storeId, id);
     }
 
-    const idx = localDb.products.findIndex((p) => p._id === id && p.storeId === storeId);
+    const idx = localDb.products.findIndex((p) => (p._id === id || (p as any).id === id) && p.storeId === storeId);
     if (idx === -1) return null;
     localDb.products[idx] = { ...localDb.products[idx], ...safeUpdates, updatedAt };
     saveLocalDb();
-    return localDb.products[idx];
+    return normalizeDoc<ProductDoc>(localDb.products[idx]);
   },
 
   async adjustStock(storeId: string, id: string, newStock: number): Promise<ProductDoc | null> {
@@ -1449,12 +1594,12 @@ export const ProductsRepo = {
 
   async delete(storeId: string, id: string): Promise<boolean> {
     if (isUsingRemoteMongo && nativeDb) {
-      const res = await nativeDb.collection<any>('products').deleteOne({ _id: id, storeId });
+      const res = await nativeDb.collection<any>('products').deleteOne({ ...buildIdQuery(id), ...buildStoreQuery(storeId) });
       return (res.deletedCount || 0) > 0;
     }
 
     const lenBefore = localDb.products.length;
-    localDb.products = localDb.products.filter((p) => !(p._id === id && p.storeId === storeId));
+    localDb.products = localDb.products.filter((p) => !((p._id === id || (p as any).id === id) && p.storeId === storeId));
     saveLocalDb();
     return localDb.products.length < lenBefore;
   },
@@ -1464,22 +1609,26 @@ export const ProductsRepo = {
 export const SalesRepo = {
   async getAll(storeId: string): Promise<SaleDoc[]> {
     if (isUsingRemoteMongo && nativeDb) {
-      return await nativeDb
+      const docs = await nativeDb
         .collection<any>('sales')
-        .find({ storeId })
+        .find(buildStoreQuery(storeId))
         .sort({ createdAt: -1 })
         .toArray();
+      return docs.map((d: any) => normalizeDoc<SaleDoc>(d));
     }
     return [...localDb.sales]
       .filter((s) => s.storeId === storeId)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .map((s) => normalizeDoc<SaleDoc>(s));
   },
 
   async findById(storeId: string, id: string): Promise<SaleDoc | null> {
     if (isUsingRemoteMongo && nativeDb) {
-      return (await nativeDb.collection<any>('sales').findOne({ _id: id, storeId })) as SaleDoc | null;
+      const doc = await nativeDb.collection<any>('sales').findOne({ ...buildIdQuery(id), ...buildStoreQuery(storeId) });
+      return normalizeDoc<SaleDoc>(doc);
     }
-    return localDb.sales.find((s) => s._id === id && s.storeId === storeId) || null;
+    const doc = localDb.sales.find((s) => (s._id === id || (s as any).id === id) && s.storeId === storeId) || null;
+    return normalizeDoc<SaleDoc>(doc);
   },
 
   async create(sale: Omit<SaleDoc, '_id'>): Promise<SaleDoc> {
@@ -1516,7 +1665,7 @@ export const SalesRepo = {
       localDb.sales.unshift(newDoc);
       saveLocalDb();
     }
-    return newDoc;
+    return normalizeDoc<SaleDoc>(newDoc);
   },
 
   async refund(storeId: string, id: string): Promise<SaleDoc | null> {
@@ -1524,10 +1673,10 @@ export const SalesRepo = {
     if (!sale || sale.status === 'refunded') return null;
 
     if (isUsingRemoteMongo && nativeDb) {
-      await nativeDb.collection<any>('sales').updateOne({ _id: id, storeId }, { $set: { status: 'refunded' } });
+      await nativeDb.collection<any>('sales').updateOne({ ...buildIdQuery(id), ...buildStoreQuery(storeId) }, { $set: { status: 'refunded' } });
       sale.status = 'refunded';
     } else {
-      const found = localDb.sales.find((s) => s._id === id && s.storeId === storeId);
+      const found = localDb.sales.find((s) => (s._id === id || (s as any).id === id) && s.storeId === storeId);
       if (!found || found.status === 'refunded') return null;
       found.status = 'refunded';
       saveLocalDb();
@@ -1538,7 +1687,7 @@ export const SalesRepo = {
     for (const item of sale.items) {
       await ProductsRepo.incrementStock(storeId, item.productId, item.quantity);
     }
-    return sale;
+    return normalizeDoc<SaleDoc>(sale);
   },
 };
 
@@ -1564,7 +1713,7 @@ export const AuditRepo = {
     if (isUsingRemoteMongo && nativeDb) {
       return await nativeDb
         .collection<any>('audit_logs')
-        .find({ storeId })
+        .find(buildStoreQuery(storeId))
         .sort({ timestamp: -1 })
         .limit(limit)
         .toArray();

@@ -21,6 +21,8 @@ const MainLayout: React.FC = () => {
     setActiveScreen,
     selectedSaleForReceipt,
     setSelectedSaleForReceipt,
+    storeInfo,
+    subscriptionExpired,
   } = usePos();
 
   const [headerSearch, setHeaderSearch] = useState('');
@@ -67,6 +69,23 @@ const MainLayout: React.FC = () => {
           onSearchChange={handleHeaderSearchChange}
           onBarcodeScanClick={() => setBarcodeModalOpen(true)}
         />
+
+        {/* Subscription Expired Warning Banner */}
+        {(subscriptionExpired || storeInfo.subscription?.status === 'expired') && (
+          <div className="bg-amber-600 text-white px-4 py-2 text-xs font-semibold flex items-center justify-between shadow-xs shrink-0 z-10">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+              <span>Subscription Notice: Your store plan is currently expired or pending renewal.</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveScreen('settings')}
+              className="bg-white text-amber-900 px-3 py-1 rounded-lg text-xs font-bold hover:bg-amber-50 transition-colors shadow-xs"
+            >
+              Subscription Details
+            </button>
+          </div>
+        )}
 
         {/* Dynamic Screen View */}
         <main className="flex-1 overflow-y-auto pb-16 md:pb-0">

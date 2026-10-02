@@ -1,5 +1,6 @@
 import http from 'http';
 import express from 'express';
+import cors from 'cors';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { initDatabase } from './server/db';
@@ -21,12 +22,52 @@ async function startServer() {
 
   const PORT = parseInt(process.env.PORT || '3000', 10);
   const isProd = process.env.NODE_ENV === 'production';
+  const allowedOriginsEnv = process.env.ALLOWED_ORIGINS;
+  const originHandler = (
+    origin: string | undefined,
+    callback: (err: Error | null, allow?: boolean) => void
+  ) => {
+    // Allow non-browser requests (Postman, curl, background server-to-server calls)
+    if (!origin) return callback(null, true);
 
-  app.use(express.json());
+    if (allowedOriginsEnv && allowedOriginsEnv !== '*') {
+      const list = allowedOriginsEnv.split(',').map((s) => s.trim());
+      if (list.includes(origin)) {
+        return callback(null, true);
+      }
+    }
+    // Dynamically reflect origin to guarantee credentials: true works in all browsers and cross-services
+    return callback(null, true);
+  };
 
-  // Health check endpoint
+  // Security & CORS Middleware
+  app.use(
+    cors({
+      origin: originHandler,
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    })
+  );
+
+  app.use((_req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    next();
+  });
+
+  app.use(express.json({ limit: '10mb' }));
+
+  // Health check endpoint (for Render & Kubernetes liveness probes)
   app.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    res.json({
+      status: 'ok',
+      service: 'shoppos-owner',
+      env: process.env.NODE_ENV || 'development',
+      timestamp: new Date().toISOString(),
+    });
   });
 
   // API Routes
@@ -52,6 +93,16 @@ async function startServer() {
   httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`[ShopPOS Server] Serving POS web app with Realtime WebSockets at http://0.0.0.0:${PORT}`);
   });
+
+  // Graceful termination handlers
+  const handleExit = () => {
+    console.log('[ShopPOS Server] Received exit signal, closing server gracefully...');
+    httpServer.close(() => {
+      process.exit(0);
+    });
+  };
+  process.on('SIGTERM', handleExit);
+  process.on('SIGINT', handleExit);
 }
 
 startServer().catch((err) => {

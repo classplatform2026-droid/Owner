@@ -8,10 +8,20 @@ const JWT_SECRET = process.env.JWT_SECRET || 'shoppos_production_jwt_secret_key_
 let io: SocketIOServer | null = null;
 
 export function initSocketIO(httpServer: HttpServer): SocketIOServer {
+  const allowedOriginsEnv = process.env.ALLOWED_ORIGINS;
+
   io = new SocketIOServer(httpServer, {
     cors: {
-      origin: '*',
-      methods: ['GET', 'POST'],
+      origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+        if (!origin) return callback(null, true);
+        if (allowedOriginsEnv && allowedOriginsEnv !== '*') {
+          const list = allowedOriginsEnv.split(',').map((s) => s.trim());
+          if (list.includes(origin)) return callback(null, true);
+        }
+        return callback(null, true);
+      },
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     },
     transports: ['websocket', 'polling'],
   });
@@ -29,13 +39,14 @@ export function initSocketIO(httpServer: HttpServer): SocketIOServer {
         return next(new Error('Authentication required: No bearer token provided'));
       }
 
-      const decoded = jwt.verify(token, JWT_SECRET) as {
-        id: string;
-        storeId?: string;
-        email: string;
-      };
+      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      const userId = decoded.id || decoded.userId || decoded.sub;
 
-      const user = await UsersRepo.findById(decoded.id);
+      if (!userId) {
+        return next(new Error('Invalid token: User ID missing'));
+      }
+
+      const user = await UsersRepo.findById(userId);
       if (!user) {
         return next(new Error('User account not found'));
       }

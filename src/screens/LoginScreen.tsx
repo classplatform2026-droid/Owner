@@ -15,7 +15,7 @@ import { usePos } from '../context/PosContext';
 import { STAFF_USERS } from '../data/mockData';
 
 export const LoginScreen: React.FC = () => {
-  const { loginWithCredentials, storeInfo, switchStorePreset, dbStatus } = usePos();
+  const { loginWithCredentials, storeInfo, switchStorePreset, dbStatus, suspendedAlertMessage } = usePos();
 
   const [mode, setMode] = useState<'password' | 'pin'>('password');
   const [email, setEmail] = useState('admin@shoppos.com');
@@ -136,7 +136,17 @@ export const LoginScreen: React.FC = () => {
 
         {/* Login Form */}
         <form onSubmit={handleLogin} className="space-y-3.5">
-          {error && (
+          {suspendedAlertMessage && (
+            <div className="p-3.5 bg-rose-50 border border-rose-300 rounded-2xl text-xs text-rose-800 flex items-start gap-2.5 animate-in fade-in duration-200 shadow-xs">
+              <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-sm text-rose-900">Account Suspended</p>
+                <p className="mt-0.5 text-rose-700 leading-relaxed">{suspendedAlertMessage}</p>
+              </div>
+            </div>
+          )}
+
+          {error && !suspendedAlertMessage && (
             <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
               <span>{error}</span>

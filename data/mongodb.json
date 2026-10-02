@@ -22,7 +22,7 @@
       "phone": "+880 1712-000001",
       "status": "active",
       "createdAt": "2026-10-02T04:46:40.635Z",
-      "lastLogin": "2026-10-02T05:22:48.965Z",
+      "lastLogin": "2026-10-02T11:18:03.893Z",
       "storeId": "store_001",
       "pinHash": "$2b$10$WwAQ0u50CdQqsp5apmQPpuNykSeBwvHgCt6mOwpmDziFYBjxf.Pte"
     },
@@ -87,7 +87,7 @@
       "phone": "+880 1812-000004",
       "status": "active",
       "createdAt": "2026-10-02T05:22:21.777Z",
-      "lastLogin": "2026-10-02T05:22:56.360Z"
+      "lastLogin": "2026-10-02T11:18:04.018Z"
     },
     {
       "_id": "usr_cashier_002",
@@ -109,7 +109,7 @@
   ],
   "stores": [
     {
-      "_id": "store_default",
+      "_id": "store_001",
       "name": "Green Mart",
       "branch": "Main Store",
       "tagline": "Fresh Groceries & Daily Essentials",
@@ -120,7 +120,19 @@
       "receiptFooter": "Thank you for shopping with Green Mart! Please visit again.",
       "printerSize": "80mm",
       "storeType": "grocery",
-      "ownerId": "usr_admin"
+      "ownerId": "usr_admin",
+      "status": "active",
+      "subscription": {
+        "plan": "Professional",
+        "status": "active",
+        "startDate": "2026-10-02T11:18:04.092Z",
+        "expiryDate": "2026-11-01T11:18:04.092Z",
+        "billingCycle": "monthly",
+        "amount": 2500,
+        "lastPaymentId": "pay_socket_test_01",
+        "paymentStatus": "approved"
+      },
+      "updatedAt": "2026-10-02T11:18:06.115Z"
     },
     {
       "_id": "store_002",
@@ -136,7 +148,18 @@
       "printerSize": "80mm",
       "storeType": "electronics",
       "createdAt": "2026-10-02T05:22:21.777Z",
-      "updatedAt": "2026-10-02T05:22:21.777Z"
+      "updatedAt": "2026-10-02T05:22:21.777Z",
+      "status": "active",
+      "subscription": {
+        "status": "active",
+        "plan": "Enterprise",
+        "startDate": "2026-09-02T10:10:52.876Z",
+        "expiryDate": "2026-12-01T10:10:52.876Z",
+        "billingCycle": "yearly",
+        "amount": 24000,
+        "lastPaymentId": "pay_store_002",
+        "paymentStatus": "approved"
+      }
     }
   ],
   "products": [
@@ -580,6 +603,168 @@
     }
   ],
   "audit_logs": [
+    {
+      "storeId": "store_001",
+      "userId": "admin_console",
+      "userName": "SaaS Platform Admin",
+      "action": "ACTIVATE_STORE",
+      "details": "Admin activated store store_001 (Green Mart)",
+      "_id": "log_1790939886116_998",
+      "timestamp": "2026-10-02T11:18:06.116Z"
+    },
+    {
+      "storeId": "store_001",
+      "userId": "admin_console",
+      "userName": "SaaS Platform Admin",
+      "action": "SUSPEND_STORE",
+      "details": "Admin suspended store store_001 (Green Mart)",
+      "_id": "log_1790939885107_632",
+      "timestamp": "2026-10-02T11:18:05.107Z"
+    },
+    {
+      "storeId": "store_001",
+      "userId": "admin_console",
+      "userName": "SaaS Platform Admin",
+      "action": "APPROVE_PAYMENT",
+      "details": "Admin approved subscription payment for store store_001",
+      "_id": "log_1790939884095_148",
+      "timestamp": "2026-10-02T11:18:04.095Z"
+    },
+    {
+      "storeId": "store_002",
+      "userId": "usr_owner_002",
+      "userName": "Tanvir Ahmed",
+      "action": "LOGIN",
+      "details": "User logged in to store store_002 with role Admin",
+      "_id": "log_1790939884019_584",
+      "timestamp": "2026-10-02T11:18:04.019Z"
+    },
+    {
+      "storeId": "store_001",
+      "userId": "usr_admin",
+      "userName": "Admin Manager",
+      "action": "LOGIN",
+      "details": "User logged in to store store_001 with role SuperAdmin",
+      "_id": "log_1790939883896_171",
+      "timestamp": "2026-10-02T11:18:03.896Z"
+    },
+    {
+      "storeId": "store_001",
+      "userId": "admin_console",
+      "userName": "SaaS Platform Admin",
+      "action": "APPROVE_PAYMENT",
+      "details": "Admin approved subscription payment for store store_001",
+      "_id": "log_1790939757940_649",
+      "timestamp": "2026-10-02T11:15:57.940Z"
+    },
+    {
+      "storeId": "store_001",
+      "userId": "admin_console",
+      "userName": "SaaS Platform Admin",
+      "action": "EXPIRE_SUBSCRIPTION",
+      "details": "Admin marked subscription as expired for store store_001",
+      "_id": "log_1790939757922_882",
+      "timestamp": "2026-10-02T11:15:57.922Z"
+    },
+    {
+      "storeId": "store_001",
+      "userId": "admin_console",
+      "userName": "SaaS Platform Admin",
+      "action": "APPROVE_PAYMENT",
+      "details": "Admin approved subscription payment for store store_001",
+      "_id": "log_1790939757915_103",
+      "timestamp": "2026-10-02T11:15:57.915Z"
+    },
+    {
+      "storeId": "store_001",
+      "userId": "admin_console",
+      "userName": "SaaS Platform Admin",
+      "action": "ACTIVATE_STORE",
+      "details": "Admin activated store store_001 (Green Mart)",
+      "_id": "log_1790939757898_163",
+      "timestamp": "2026-10-02T11:15:57.898Z"
+    },
+    {
+      "storeId": "store_001",
+      "userId": "admin_console",
+      "userName": "SaaS Platform Admin",
+      "action": "SUSPEND_STORE",
+      "details": "Admin suspended store store_001 (Green Mart)",
+      "_id": "log_1790939757886_61",
+      "timestamp": "2026-10-02T11:15:57.886Z"
+    },
+    {
+      "storeId": "store_002",
+      "userId": "usr_owner_002",
+      "userName": "Tanvir Ahmed",
+      "action": "LOGIN",
+      "details": "User logged in to store store_002 with role Admin",
+      "_id": "log_1790939757855_518",
+      "timestamp": "2026-10-02T11:15:57.855Z"
+    },
+    {
+      "storeId": "store_001",
+      "userId": "usr_admin",
+      "userName": "Admin Manager",
+      "action": "LOGIN",
+      "details": "User logged in to store store_001 with role SuperAdmin",
+      "_id": "log_1790939757728_671",
+      "timestamp": "2026-10-02T11:15:57.728Z"
+    },
+    {
+      "storeId": "store_001",
+      "userId": "usr_admin",
+      "userName": "Admin Manager",
+      "action": "LOGIN",
+      "details": "User logged in to store store_001 with role SuperAdmin",
+      "_id": "log_1790939721372_256",
+      "timestamp": "2026-10-02T11:15:21.372Z"
+    },
+    {
+      "storeId": "store_001",
+      "userId": "usr_admin",
+      "userName": "Admin Manager",
+      "action": "LOGIN",
+      "details": "User logged in to store store_001 with role SuperAdmin",
+      "_id": "log_1790939715320_694",
+      "timestamp": "2026-10-02T11:15:15.320Z"
+    },
+    {
+      "storeId": "store_002",
+      "userId": "usr_owner_002",
+      "userName": "Tanvir Ahmed",
+      "action": "LOGIN",
+      "details": "User logged in to store store_002 with role Admin",
+      "_id": "log_1790939709788_993",
+      "timestamp": "2026-10-02T11:15:09.788Z"
+    },
+    {
+      "storeId": "store_001",
+      "userId": "usr_admin",
+      "userName": "Admin Manager",
+      "action": "LOGIN",
+      "details": "User logged in to store store_001 with role SuperAdmin",
+      "_id": "log_1790939709653_583",
+      "timestamp": "2026-10-02T11:15:09.653Z"
+    },
+    {
+      "storeId": "store_002",
+      "userId": "usr_owner_002",
+      "userName": "Tanvir Ahmed",
+      "action": "LOGIN",
+      "details": "User logged in to store store_002 with role Admin",
+      "_id": "log_1790939699778_923",
+      "timestamp": "2026-10-02T11:14:59.778Z"
+    },
+    {
+      "storeId": "store_001",
+      "userId": "usr_admin",
+      "userName": "Admin Manager",
+      "action": "LOGIN",
+      "details": "User logged in to store store_001 with role SuperAdmin",
+      "_id": "log_1790939695327_857",
+      "timestamp": "2026-10-02T11:14:55.327Z"
+    },
     {
       "storeId": "store_002",
       "userId": "usr_owner_002",

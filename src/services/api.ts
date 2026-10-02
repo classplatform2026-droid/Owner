@@ -38,7 +38,23 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ error: `Request failed with status ${res.status}` }));
-    throw new Error(errorData.error || `HTTP error ${res.status}`);
+    if (res.status === 403 && errorData.code === 'ACCOUNT_SUSPENDED') {
+      window.dispatchEvent(
+        new CustomEvent('shoppos:account_suspended', {
+          detail: { message: errorData.error || 'Your account has been suspended. Please contact support.' },
+        })
+      );
+    } else if (res.status === 403 && errorData.code === 'SUBSCRIPTION_EXPIRED') {
+      window.dispatchEvent(
+        new CustomEvent('shoppos:subscription_expired', {
+          detail: errorData,
+        })
+      );
+    }
+    const err = new Error(errorData.error || `HTTP error ${res.status}`);
+    (err as any).code = errorData.code;
+    (err as any).status = res.status;
+    throw err;
   }
 
   return res.json() as Promise<T>;

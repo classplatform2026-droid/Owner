@@ -1,14 +1,38 @@
 import { Router, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { UsersRepo, AuditRepo } from '../db';
+import { UsersRepo, StoreRepo, AuditRepo } from '../db';
 import { authenticateToken, requireRole, generateToken, AuthRequest } from '../auth';
 
 export const authRouter = Router();
+
+// In-memory rate limiting map (IP -> attempts count)
+const loginAttempts: Map<string, { count: number; resetTime: number }> = new Map();
+
+function checkLoginRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const record = loginAttempts.get(ip);
+  if (!record || now > record.resetTime) {
+    loginAttempts.set(ip, { count: 1, resetTime: now + 15 * 60 * 1000 });
+    return true;
+  }
+  if (record.count >= 30) {
+    return false;
+  }
+  record.count += 1;
+  return true;
+}
 
 // POST /api/auth/login
 // Supports multi-tenant login with email/password, email/PIN, or terminal PIN directly
 authRouter.post('/login', async (req: AuthRequest, res: Response) => {
   try {
+    const clientIp = req.ip || req.socket.remoteAddress || '127.0.0.1';
+    if (!checkLoginRateLimit(clientIp)) {
+      return res.status(429).json({
+        error: 'Too many login attempts. Please wait 15 minutes before trying again.',
+      });
+    }
+
     const { identifier, password, pin } = req.body;
 
     if (!identifier && !pin) {
@@ -35,13 +59,26 @@ authRouter.post('/login', async (req: AuthRequest, res: Response) => {
     }
 
     if (user.status === 'suspended') {
-      return res.status(403).json({ error: 'Account suspended. Contact store manager.' });
+      return res.status(403).json({
+        error: 'Your account has been suspended. Please contact support.',
+        code: 'ACCOUNT_SUSPENDED',
+      });
+    }
+
+    // Verify store status
+    const store = await StoreRepo.getStore(user.storeId);
+    if (store && store.status === 'suspended') {
+      return res.status(403).json({
+        error: 'Your account has been suspended. Please contact support.',
+        code: 'ACCOUNT_SUSPENDED',
+      });
     }
 
     // Verify credentials
     let passwordMatches = false;
-    if (password && user.passwordHash) {
-      passwordMatches = await bcrypt.compare(password, user.passwordHash);
+    const userPass = user.passwordHash || (user as any).password;
+    if (password && userPass) {
+      passwordMatches = await bcrypt.compare(password, userPass);
     }
 
     let pinMatches = false;

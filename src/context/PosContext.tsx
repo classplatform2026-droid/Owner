@@ -15,6 +15,12 @@ import {
   STORE_PRESETS,
 } from '../data/mockData';
 import { api, DbStatusResponse, setStoredToken, getStoredToken } from '../services/api';
+import {
+  connectSocket,
+  disconnectSocket,
+  subscribeToRealtimeEvent,
+  isSocketConnected,
+} from '../services/socket';
 
 export type ScreenType = 'dashboard' | 'pos' | 'products' | 'sales' | 'settings';
 
@@ -33,6 +39,10 @@ interface PosContextType {
   setSelectedSaleForReceipt: (sale: Sale | null) => void;
   dbStatus: DbStatusResponse | null;
   isLoading: boolean;
+  socketConnected: boolean;
+  suspendedAlertMessage: string | null;
+  setSuspendedAlertMessage: (msg: string | null) => void;
+  subscriptionExpired: boolean;
 
   // Cart Actions
   addToCart: (product: Product, quantity?: number) => void;
@@ -146,6 +156,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   const [selectedSaleForReceipt, setSelectedSaleForReceipt] = useState<Sale | null>(null);
 
+  // Realtime Socket & Suspension states
+  const [socketConnected, setSocketConnected] = useState(isSocketConnected());
+  const [suspendedAlertMessage, setSuspendedAlertMessage] = useState<string | null>(null);
+  const [subscriptionExpired, setSubscriptionExpired] = useState(false);
+
   // Cart state
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discountType, setDiscountType] = useState<'percentage' | 'flat'>('flat');
@@ -163,7 +178,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // Fetch Store
       api.getStore().then((res) => {
-        if (res.store) setStoreInfo(res.store);
+        if (res.store) {
+          setStoreInfo(res.store);
+          if (res.store.subscription?.status === 'expired') {
+            setSubscriptionExpired(true);
+          }
+        }
       }).catch(() => {});
 
       // Fetch Categories
@@ -234,6 +254,131 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     fetchAllData();
+  }, [fetchAllData]);
+
+  // Realtime Socket.IO Connection & Event Listeners
+  useEffect(() => {
+    const token = getStoredToken();
+    if (token) {
+      connectSocket(token);
+    }
+
+    const unsubConnect = subscribeToRealtimeEvent('connect', () => {
+      setSocketConnected(true);
+    });
+
+    const unsubDisconnect = subscribeToRealtimeEvent('disconnect', () => {
+      setSocketConnected(false);
+    });
+
+    // 1. Account Suspended Handler
+    const unsubSuspended = subscribeToRealtimeEvent('ACCOUNT_SUSPENDED', (data: any) => {
+      console.warn('[Realtime Event] ACCOUNT_SUSPENDED received:', data);
+      const msg = data?.message || 'Your account has been suspended. Please contact support.';
+      setSuspendedAlertMessage(msg);
+      disconnectSocket();
+      setSocketConnected(false);
+      setStoredToken(null);
+      setCurrentUser(null);
+      try {
+        localStorage.removeItem('shoppos_current_user');
+      } catch {}
+    });
+
+    // 2. Account Activated Handler
+    const unsubActivated = subscribeToRealtimeEvent('ACCOUNT_ACTIVATED', (data: any) => {
+      console.log('[Realtime Event] ACCOUNT_ACTIVATED received:', data);
+      setSuspendedAlertMessage(null);
+      fetchAllData();
+    });
+
+    // 3. Payment Approved Handler
+    const unsubPayApproved = subscribeToRealtimeEvent('PAYMENT_APPROVED', (data: any) => {
+      console.log('[Realtime Event] PAYMENT_APPROVED received:', data);
+      if (data?.subscription) {
+        setStoreInfo((prev) => ({
+          ...prev,
+          status: 'active',
+          subscription: data.subscription,
+        }));
+        setSubscriptionExpired(false);
+      }
+    });
+
+    // 4. Subscription Activated / Updated Handler
+    const unsubSubActivated = subscribeToRealtimeEvent('SUBSCRIPTION_ACTIVATED', (data: any) => {
+      console.log('[Realtime Event] SUBSCRIPTION_ACTIVATED received:', data);
+      if (data?.subscription) {
+        setStoreInfo((prev) => ({
+          ...prev,
+          status: 'active',
+          subscription: data.subscription,
+        }));
+        setSubscriptionExpired(false);
+      }
+    });
+
+    const unsubSubUpdated = subscribeToRealtimeEvent('SUBSCRIPTION_UPDATED', (data: any) => {
+      console.log('[Realtime Event] SUBSCRIPTION_UPDATED received:', data);
+      if (data?.subscription) {
+        setStoreInfo((prev) => ({
+          ...prev,
+          subscription: data.subscription,
+        }));
+        setSubscriptionExpired(data.subscription.status === 'expired');
+      }
+    });
+
+    // 5. Subscription Expired Handler
+    const unsubSubExpired = subscribeToRealtimeEvent('SUBSCRIPTION_EXPIRED', (data: any) => {
+      console.warn('[Realtime Event] SUBSCRIPTION_EXPIRED received:', data);
+      setStoreInfo((prev) => ({
+        ...prev,
+        subscription: prev.subscription
+          ? { ...prev.subscription, status: 'expired' }
+          : undefined,
+      }));
+      setSubscriptionExpired(true);
+    });
+
+    // Custom Window Events for API 403 Interception
+    const handleWindowSuspended = (e: any) => {
+      const msg = e.detail?.message || 'Your account has been suspended. Please contact support.';
+      setSuspendedAlertMessage(msg);
+      disconnectSocket();
+      setSocketConnected(false);
+      setStoredToken(null);
+      setCurrentUser(null);
+      try {
+        localStorage.removeItem('shoppos_current_user');
+      } catch {}
+    };
+
+    const handleWindowExpired = () => {
+      setSubscriptionExpired(true);
+      setStoreInfo((prev) => ({
+        ...prev,
+        subscription: prev.subscription
+          ? { ...prev.subscription, status: 'expired' }
+          : undefined,
+      }));
+    };
+
+    window.addEventListener('shoppos:account_suspended', handleWindowSuspended);
+    window.addEventListener('shoppos:subscription_expired', handleWindowExpired);
+
+    return () => {
+      unsubConnect();
+      unsubDisconnect();
+      unsubSuspended();
+      unsubActivated();
+      unsubPayApproved();
+      unsubSubActivated();
+      unsubSubUpdated();
+      unsubSubExpired();
+      window.removeEventListener('shoppos:account_suspended', handleWindowSuspended);
+      window.removeEventListener('shoppos:subscription_expired', handleWindowExpired);
+    };
   }, [fetchAllData]);
 
   // Audio tone generator
@@ -656,6 +801,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         lastLogin: data.user.lastLogin,
       };
       loginUser(loggedUser);
+      if (data.token) {
+        connectSocket(data.token);
+      }
       fetchAllData();
       return true;
     } catch (err) {
@@ -674,6 +822,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const logoutUser = () => {
+    disconnectSocket();
+    setSocketConnected(false);
     setCurrentUser(null);
     setStoredToken(null);
     try {
@@ -730,6 +880,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedSaleForReceipt,
         dbStatus,
         isLoading,
+        socketConnected,
+        suspendedAlertMessage,
+        setSuspendedAlertMessage,
+        subscriptionExpired,
         addToCart,
         removeFromCart,
         updateCartQuantity,

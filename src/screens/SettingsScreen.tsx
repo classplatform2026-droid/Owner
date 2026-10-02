@@ -52,10 +52,11 @@ export const SettingsScreen: React.FC = () => {
     dbStatus,
     soundEnabled,
     setSoundEnabled,
+    socketConnected,
   } = usePos();
 
   const [activeTab, setActiveTab] = useState<
-    'store' | 'authority' | 'database' | 'printer' | 'presets'
+    'store' | 'authority' | 'database' | 'printer' | 'presets' | 'subscription'
   >('authority');
 
   // Form states for Store
@@ -238,6 +239,12 @@ export const SettingsScreen: React.FC = () => {
               label: 'Printer Settings',
               desc: `Format: ${storeInfo.printerSize}`,
               icon: Printer,
+            },
+            {
+              id: 'subscription',
+              label: 'Subscription & Realtime',
+              desc: `${storeInfo.subscription?.plan || 'Pro'} · ${storeInfo.subscription?.status || 'Active'}`,
+              icon: Activity,
             },
             {
               id: 'presets',
@@ -769,6 +776,175 @@ export const SettingsScreen: React.FC = () => {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* Subscription & Realtime Tab */}
+          {activeTab === 'subscription' && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">Realtime Subscription & SaaS Sync</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Live Socket.IO connection and administrative subscription state
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-xs font-semibold w-fit">
+                  <span
+                    className={`w-2.5 h-2.5 rounded-full ${
+                      socketConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'
+                    }`}
+                  />
+                  <span className={socketConnected ? 'text-emerald-700' : 'text-rose-700'}>
+                    {socketConnected ? 'Socket.IO Connected' : 'Disconnected'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Plan Card */}
+              <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 text-white shadow-lg space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Current Plan
+                    </span>
+                    <h4 className="text-xl font-extrabold text-white mt-0.5">
+                      {storeInfo.subscription?.plan || 'Professional'} Plan
+                    </h4>
+                  </div>
+                  <div
+                    className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                      storeInfo.subscription?.status === 'active'
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                        : storeInfo.subscription?.status === 'expired'
+                        ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                        : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                    }`}
+                  >
+                    {storeInfo.subscription?.status === 'active'
+                      ? '● Active'
+                      : storeInfo.subscription?.status === 'expired'
+                      ? '● Expired'
+                      : '● Suspended'}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-slate-700/60 text-xs">
+                  <div>
+                    <span className="text-slate-400 text-[10px] block">Billing Cycle</span>
+                    <span className="font-semibold text-slate-200 capitalize">
+                      {storeInfo.subscription?.billingCycle || 'monthly'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 text-[10px] block">Renewal Fee</span>
+                    <span className="font-semibold text-slate-200">
+                      ৳ {storeInfo.subscription?.amount || 2500}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 text-[10px] block">Expiry Date</span>
+                    <span className="font-semibold text-slate-200 font-mono text-[11px]">
+                      {storeInfo.subscription?.expiryDate
+                        ? new Date(storeInfo.subscription.expiryDate).toLocaleDateString()
+                        : 'N/A'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 text-[10px] block">Store ID</span>
+                    <span className="font-semibold text-blue-300 font-mono text-[11px]">
+                      {currentUser?.storeId || 'store_001'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Admin Simulation & Test Panel */}
+              <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-3">
+                <div className="flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-blue-600" />
+                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    Admin Realtime Testing Panel
+                  </h4>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Simulate platform admin events and test instant live socket broadcasting without page refresh:
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (currentUser?.storeId) {
+                        await api.adminSuspendStore(currentUser.storeId);
+                      }
+                    }}
+                    className="p-3 bg-white hover:bg-rose-50 border border-rose-200 rounded-xl text-xs font-bold text-rose-700 text-left transition-colors flex items-center justify-between"
+                  >
+                    <div>
+                      <p>1. Simulate Admin Suspend</p>
+                      <p className="text-[10px] font-normal text-rose-500">
+                        Triggers ACCOUNT_SUSPENDED → immediate logout
+                      </p>
+                    </div>
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (currentUser?.storeId) {
+                        await api.adminApprovePayment(currentUser.storeId, undefined, 2);
+                      }
+                    }}
+                    className="p-3 bg-white hover:bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-700 text-left transition-colors flex items-center justify-between"
+                  >
+                    <div>
+                      <p>2. Simulate Approve Payment</p>
+                      <p className="text-[10px] font-normal text-emerald-600">
+                        Triggers PAYMENT_APPROVED → instant Active
+                      </p>
+                    </div>
+                    <Check className="w-4 h-4 shrink-0 text-emerald-600" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (currentUser?.storeId) {
+                        await api.adminExpireSubscription(currentUser.storeId);
+                      }
+                    }}
+                    className="p-3 bg-white hover:bg-amber-50 border border-amber-200 rounded-xl text-xs font-bold text-amber-700 text-left transition-colors flex items-center justify-between"
+                  >
+                    <div>
+                      <p>3. Simulate Expire Subscription</p>
+                      <p className="text-[10px] font-normal text-amber-600">
+                        Triggers SUBSCRIPTION_EXPIRED → blocks checkout
+                      </p>
+                    </div>
+                    <RotateCcw className="w-4 h-4 shrink-0 text-amber-600" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (currentUser?.storeId) {
+                        await api.adminActivateStore(currentUser.storeId);
+                      }
+                    }}
+                    className="p-3 bg-white hover:bg-blue-50 border border-blue-200 rounded-xl text-xs font-bold text-blue-700 text-left transition-colors flex items-center justify-between"
+                  >
+                    <div>
+                      <p>4. Simulate Admin Activate</p>
+                      <p className="text-[10px] font-normal text-blue-600">
+                        Triggers ACCOUNT_ACTIVATED
+                      </p>
+                    </div>
+                    <ShieldCheck className="w-4 h-4 shrink-0 text-blue-600" />
+                  </button>
+                </div>
               </div>
             </div>
           )}

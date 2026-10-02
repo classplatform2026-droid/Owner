@@ -11,14 +11,18 @@ export interface AuthRequest extends Request {
 }
 
 export function generateToken(user: UserDoc): string {
+  const uid = user._id ? user._id.toString() : (user.id || '');
+  const sId = user.storeId ? user.storeId.toString() : '';
   return jwt.sign(
     {
-      id: user._id,
-      storeId: user.storeId,
+      id: uid,
+      userId: uid,
+      sub: uid,
+      storeId: sId,
       email: user.email,
       name: user.name,
       role: user.role,
-      permissions: user.permissions,
+      permissions: user.permissions || [],
     },
     JWT_SECRET,
     { expiresIn: '7d' }
@@ -38,13 +42,14 @@ export async function authenticateToken(
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as {
-      id: string;
-      storeId?: string;
-      email: string;
-    };
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const userId = decoded.id || decoded.userId || decoded.sub;
 
-    const user = await UsersRepo.findById(decoded.id);
+    if (!userId) {
+      return res.status(401).json({ error: 'Invalid token: User ID missing.' });
+    }
+
+    const user = await UsersRepo.findById(userId);
 
     if (!user) {
       return res.status(401).json({ error: 'User account no longer exists.' });
@@ -112,17 +117,19 @@ export function requireActiveSubscription(
   next();
 }
 
-export function requireRole(allowedRoles: Array<'SuperAdmin' | 'Admin' | 'Manager' | 'Cashier'>) {
+export function requireRole(allowedRoles: Array<'SuperAdmin' | 'Admin' | 'Manager' | 'Cashier' | 'Owner' | string>) {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({ error: 'Unauthorized.' });
     }
 
-    if (req.user.role === 'SuperAdmin') {
+    const currentRole = (req.user.role || '').toLowerCase();
+    if (currentRole === 'superadmin' || currentRole === 'owner') {
       return next(); // SuperAdmin / Owner has full store rights
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    const normalizedAllowed = allowedRoles.map((r) => r.toLowerCase());
+    if (!normalizedAllowed.includes(currentRole)) {
       return res.status(403).json({
         error: `Access denied. Requires one of: [${allowedRoles.join(', ')}]. Current role: ${req.user.role}`,
       });
@@ -138,7 +145,8 @@ export function requirePermission(permission: string) {
       return res.status(401).json({ error: 'Unauthorized.' });
     }
 
-    if (req.user.role === 'SuperAdmin' || req.user.role === 'Admin') {
+    const currentRole = (req.user.role || '').toLowerCase();
+    if (currentRole === 'superadmin' || currentRole === 'owner' || currentRole === 'admin') {
       return next(); // Store owners / Admins have all permissions in their store
     }
 
