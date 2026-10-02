@@ -1,0 +1,790 @@
+{
+  "users": [
+    {
+      "_id": "usr_admin",
+      "name": "Admin Manager",
+      "email": "admin@shoppos.com",
+      "passwordHash": "$2b$10$muIF6gbA7nAXb6EqXumS3Od4Cf6jT4AzZ1TbkDSAycooImFqphr3G",
+      "role": "SuperAdmin",
+      "permissions": [
+        "pos.checkout",
+        "pos.discount",
+        "products.create",
+        "products.edit",
+        "products.delete",
+        "products.stock",
+        "sales.view",
+        "sales.refund",
+        "staff.manage",
+        "settings.update",
+        "stores.switch"
+      ],
+      "phone": "+880 1712-000001",
+      "status": "active",
+      "createdAt": "2026-10-02T04:46:40.635Z",
+      "lastLogin": "2026-10-02T05:22:48.965Z",
+      "storeId": "store_001",
+      "pinHash": "$2b$10$WwAQ0u50CdQqsp5apmQPpuNykSeBwvHgCt6mOwpmDziFYBjxf.Pte"
+    },
+    {
+      "_id": "usr_manager",
+      "name": "Sadia Akhter",
+      "email": "manager@shoppos.com",
+      "passwordHash": "$2b$10$muIF6gbA7nAXb6EqXumS3O8mnqUdDJkT1jdugz.70GLyLfSdSwih6",
+      "role": "Manager",
+      "permissions": [
+        "pos.checkout",
+        "pos.discount",
+        "products.create",
+        "products.edit",
+        "products.stock",
+        "sales.view",
+        "sales.refund"
+      ],
+      "phone": "+880 1819-000002",
+      "status": "active",
+      "createdAt": "2026-10-02T04:46:40.636Z",
+      "storeId": "store_001",
+      "pinHash": "$2b$10$ZKMDDD.xY1ZO2vo4XCvWounTg0jDSlv9tWuDwTyNdZDkdd4lSQlCu"
+    },
+    {
+      "_id": "usr_cashier",
+      "name": "Tariqul Islam",
+      "email": "cashier@shoppos.com",
+      "passwordHash": "$2b$10$muIF6gbA7nAXb6EqXumS3OoIoLaXBH9px54Zb3wKHCQIEdiK3DiH6",
+      "role": "Cashier",
+      "permissions": [
+        "pos.checkout",
+        "sales.view"
+      ],
+      "phone": "+880 1911-000003",
+      "status": "active",
+      "createdAt": "2026-10-02T04:46:40.636Z",
+      "storeId": "store_001",
+      "pinHash": "$2b$10$H5ueB4LaM2SSj5.0H9KYaOixb7DqXNuiEn2P5gNXTsaITYEMMiOYO"
+    },
+    {
+      "_id": "usr_owner_002",
+      "storeId": "store_002",
+      "name": "Tanvir Ahmed",
+      "email": "owner2@shoppos.com",
+      "passwordHash": "$2b$10$TclIAfCfBj1IhRFsILTS..FBgo4D559dQH3ZLTYLhan5KLw68nunC",
+      "pinHash": "$2b$10$TclIAfCfBj1IhRFsILTS..Fna5CmDtdwCiMPErWWHbHDQpukGRcCW",
+      "role": "Admin",
+      "permissions": [
+        "pos.checkout",
+        "pos.discount",
+        "products.create",
+        "products.edit",
+        "products.delete",
+        "products.stock",
+        "sales.view",
+        "sales.refund",
+        "staff.manage",
+        "settings.update",
+        "stores.switch"
+      ],
+      "phone": "+880 1812-000004",
+      "status": "active",
+      "createdAt": "2026-10-02T05:22:21.777Z",
+      "lastLogin": "2026-10-02T05:22:56.360Z"
+    },
+    {
+      "_id": "usr_cashier_002",
+      "storeId": "store_002",
+      "name": "Kamrul Hasan",
+      "email": "cashier2@shoppos.com",
+      "passwordHash": "$2b$10$TclIAfCfBj1IhRFsILTS..cumIxqJDv0gBJ1Y.06Odx4vRG2m1iDu",
+      "pinHash": "$2b$10$TclIAfCfBj1IhRFsILTS..FPiOFhAIy3cDncU3c/Yc1XIDr4eugsO",
+      "role": "Cashier",
+      "permissions": [
+        "pos.checkout",
+        "sales.view"
+      ],
+      "phone": "+880 1912-000005",
+      "status": "active",
+      "createdAt": "2026-10-02T05:22:21.777Z",
+      "lastLogin": "2026-10-02T05:22:48.819Z"
+    }
+  ],
+  "stores": [
+    {
+      "_id": "store_default",
+      "name": "Green Mart",
+      "branch": "Main Store",
+      "tagline": "Fresh Groceries & Daily Essentials",
+      "phone": "+880 1712-345678",
+      "address": "Shop #14, Road 7, Dhanmondi, Dhaka",
+      "currency": "৳",
+      "taxRate": 0,
+      "receiptFooter": "Thank you for shopping with Green Mart! Please visit again.",
+      "printerSize": "80mm",
+      "storeType": "grocery",
+      "ownerId": "usr_admin"
+    },
+    {
+      "_id": "store_002",
+      "ownerId": "usr_owner_002",
+      "name": "Blue Electronics",
+      "branch": "Gulshan Branch",
+      "tagline": "Premium Gadgets & Authentic Accessories",
+      "phone": "+880 1812-987654",
+      "address": "Level 3, Block C, Gulshan-2, Dhaka",
+      "currency": "৳",
+      "taxRate": 5,
+      "receiptFooter": "Warranty valid with invoice. Thank you for choosing Blue Electronics!",
+      "printerSize": "80mm",
+      "storeType": "electronics",
+      "createdAt": "2026-10-02T05:22:21.777Z",
+      "updatedAt": "2026-10-02T05:22:21.777Z"
+    }
+  ],
+  "products": [
+    {
+      "_id": "prod-1",
+      "name": "Rice (5KG)",
+      "sku": "GRO-RC-001",
+      "barcode": "890103001",
+      "category": "Grocery",
+      "storeType": "grocery",
+      "costPrice": 950,
+      "price": 1200,
+      "stock": 45,
+      "lowStockThreshold": 10,
+      "unit": "5KG",
+      "iconType": "rice",
+      "color": "#F59E0B",
+      "storeId": "store_001"
+    },
+    {
+      "_id": "prod-2",
+      "name": "Cooking Oil (1L)",
+      "sku": "GRO-OIL-002",
+      "barcode": "890103002",
+      "category": "Grocery",
+      "storeType": "grocery",
+      "costPrice": 145,
+      "price": 180,
+      "stock": 32,
+      "lowStockThreshold": 8,
+      "unit": "1L",
+      "iconType": "oil",
+      "color": "#EAB308",
+      "storeId": "store_001"
+    },
+    {
+      "_id": "prod-3",
+      "name": "Sugar (1KG)",
+      "sku": "GRO-SGR-003",
+      "barcode": "890103003",
+      "category": "Grocery",
+      "storeType": "grocery",
+      "costPrice": 72,
+      "price": 90,
+      "stock": 28,
+      "lowStockThreshold": 10,
+      "unit": "1KG",
+      "iconType": "sugar",
+      "color": "#06B6D4",
+      "storeId": "store_001"
+    },
+    {
+      "_id": "prod-4",
+      "name": "Lentil (1KG)",
+      "sku": "GRO-LNT-004",
+      "barcode": "890103004",
+      "category": "Grocery",
+      "storeType": "grocery",
+      "costPrice": 95,
+      "price": 120,
+      "stock": 20,
+      "lowStockThreshold": 5,
+      "unit": "1KG",
+      "iconType": "lentil",
+      "color": "#EA580C",
+      "storeId": "store_001"
+    },
+    {
+      "_id": "prod-5",
+      "name": "Flour (1KG)",
+      "sku": "GRO-FLR-005",
+      "barcode": "890103005",
+      "category": "Grocery",
+      "storeType": "grocery",
+      "costPrice": 54,
+      "price": 70,
+      "stock": 26,
+      "lowStockThreshold": 8,
+      "unit": "1KG",
+      "iconType": "flour",
+      "color": "#D97706",
+      "storeId": "store_001"
+    },
+    {
+      "_id": "prod-6",
+      "name": "Salt (1KG)",
+      "sku": "GRO-SLT-006",
+      "barcode": "890103006",
+      "category": "Grocery",
+      "storeType": "grocery",
+      "costPrice": 28,
+      "price": 40,
+      "stock": 65,
+      "lowStockThreshold": 12,
+      "unit": "1KG",
+      "iconType": "salt",
+      "color": "#2563EB",
+      "storeId": "store_001"
+    },
+    {
+      "_id": "prod-7",
+      "name": "Tea (250G)",
+      "sku": "BEV-TEA-007",
+      "barcode": "890103007",
+      "category": "Beverages",
+      "storeType": "grocery",
+      "costPrice": 125,
+      "price": 160,
+      "stock": 40,
+      "lowStockThreshold": 8,
+      "unit": "250G",
+      "iconType": "tea",
+      "color": "#15803D",
+      "storeId": "store_001"
+    },
+    {
+      "_id": "prod-8",
+      "name": "Biscuits",
+      "sku": "SNK-BSC-008",
+      "barcode": "890103008",
+      "category": "Snacks",
+      "storeType": "grocery",
+      "costPrice": 45,
+      "price": 60,
+      "stock": 55,
+      "lowStockThreshold": 15,
+      "unit": "Pack",
+      "iconType": "biscuit",
+      "color": "#B45309",
+      "storeId": "store_001"
+    },
+    {
+      "_id": "prod-9",
+      "name": "Milk (1L)",
+      "sku": "BEV-MLK-009",
+      "barcode": "890103009",
+      "category": "Beverages",
+      "storeType": "grocery",
+      "costPrice": 88,
+      "price": 110,
+      "stock": 18,
+      "lowStockThreshold": 6,
+      "unit": "1L",
+      "iconType": "milk",
+      "color": "#3B82F6",
+      "storeId": "store_001"
+    },
+    {
+      "_id": "prod-10",
+      "name": "Mobile Charger 20W",
+      "sku": "ELE-CHG-010",
+      "barcode": "890103010",
+      "category": "Electronics",
+      "storeType": "electronics",
+      "costPrice": 650,
+      "price": 1040,
+      "stock": 14,
+      "lowStockThreshold": 4,
+      "unit": "Pcs",
+      "iconType": "charger",
+      "color": "#475569",
+      "storeId": "store_001"
+    },
+    {
+      "_id": "prod-11",
+      "name": "Instant Noodles (4-Pack)",
+      "sku": "SNK-NDL-015",
+      "barcode": "890103015",
+      "category": "Snacks",
+      "storeType": "grocery",
+      "costPrice": 90,
+      "price": 130,
+      "stock": 4,
+      "lowStockThreshold": 10,
+      "unit": "Pack",
+      "iconType": "noodles",
+      "color": "#EF4444",
+      "storeId": "store_001"
+    },
+    {
+      "_id": "prod-12",
+      "name": "Energy Drink (250ml)",
+      "sku": "BEV-NRG-016",
+      "barcode": "890103016",
+      "category": "Beverages",
+      "storeType": "grocery",
+      "costPrice": 65,
+      "price": 95,
+      "stock": 3,
+      "lowStockThreshold": 8,
+      "unit": "Can",
+      "iconType": "energydrink",
+      "color": "#10B981",
+      "storeId": "store_001"
+    },
+    {
+      "_id": "prod-201",
+      "storeId": "store_002",
+      "name": "65W GaN Fast Charger",
+      "sku": "ELE-CHG-001",
+      "barcode": "890201001",
+      "category": "Power & Cables",
+      "storeType": "electronics",
+      "costPrice": 1200,
+      "price": 1850,
+      "stock": 30,
+      "lowStockThreshold": 5,
+      "unit": "Pcs",
+      "iconType": "charger",
+      "color": "#3B82F6",
+      "updatedAt": "2026-10-02T05:22:56.386Z"
+    },
+    {
+      "_id": "prod-202",
+      "storeId": "store_002",
+      "name": "Braided USB-C Cable (2m)",
+      "sku": "ELE-CBL-002",
+      "barcode": "890201002",
+      "category": "Power & Cables",
+      "storeType": "electronics",
+      "costPrice": 250,
+      "price": 450,
+      "stock": 55,
+      "lowStockThreshold": 10,
+      "unit": "Pcs",
+      "iconType": "cable",
+      "color": "#10B981"
+    },
+    {
+      "_id": "prod-203",
+      "storeId": "store_002",
+      "name": "Active Noise Cancelling Earbuds",
+      "sku": "ELE-AUD-003",
+      "barcode": "890201003",
+      "category": "Audio & Headphones",
+      "storeType": "electronics",
+      "costPrice": 2200,
+      "price": 3499,
+      "stock": 18,
+      "lowStockThreshold": 4,
+      "unit": "Pcs",
+      "iconType": "earbuds",
+      "color": "#8B5CF6"
+    },
+    {
+      "_id": "prod-204",
+      "storeId": "store_002",
+      "name": "MagSafe Wireless Power Bank 10000mAh",
+      "sku": "ELE-PWR-004",
+      "barcode": "890201004",
+      "category": "Mobile Accessories",
+      "storeType": "electronics",
+      "costPrice": 1800,
+      "price": 2600,
+      "stock": 14,
+      "lowStockThreshold": 3,
+      "unit": "Pcs",
+      "iconType": "charger",
+      "color": "#F59E0B"
+    },
+    {
+      "_id": "prod-205",
+      "storeId": "store_002",
+      "name": "Fitness Smart Band 8",
+      "sku": "ELE-SMT-005",
+      "barcode": "890201005",
+      "category": "Smart Wearables",
+      "storeType": "electronics",
+      "costPrice": 2400,
+      "price": 3300,
+      "stock": 20,
+      "lowStockThreshold": 5,
+      "unit": "Pcs",
+      "iconType": "earbuds",
+      "color": "#EC4899"
+    }
+  ],
+  "sales": [
+    {
+      "storeId": "store_002",
+      "invoiceNo": "1001",
+      "createdAt": "2026-10-02T05:22:48.845Z",
+      "items": [
+        {
+          "productId": "prod-201",
+          "productName": "65W GaN Fast Charger",
+          "quantity": 2,
+          "unitPrice": 1850,
+          "totalPrice": 3700
+        }
+      ],
+      "subtotal": 3700,
+      "discountType": "flat",
+      "discountValue": 0,
+      "discountAmount": 0,
+      "taxAmount": 0,
+      "total": 3700,
+      "paymentMethod": "Card",
+      "cashierId": "usr_cashier_002",
+      "cashierName": "Kamrul Hasan",
+      "customerName": "Imran Hossain",
+      "status": "refunded",
+      "_id": "sale_1790918568846_74"
+    },
+    {
+      "_id": "sale-1005",
+      "invoiceNo": "1005",
+      "createdAt": "2026-10-02T04:46:40.636Z",
+      "items": [
+        {
+          "productId": "prod-1",
+          "productName": "Rice (5KG)",
+          "quantity": 1,
+          "unitPrice": 1200,
+          "totalPrice": 1200
+        },
+        {
+          "productId": "prod-2",
+          "productName": "Cooking Oil (1L)",
+          "quantity": 2,
+          "unitPrice": 180,
+          "totalPrice": 360
+        },
+        {
+          "productId": "prod-3",
+          "productName": "Sugar (1KG)",
+          "quantity": 1,
+          "unitPrice": 90,
+          "totalPrice": 90
+        }
+      ],
+      "subtotal": 1650,
+      "discountType": "flat",
+      "discountValue": 0,
+      "discountAmount": 0,
+      "taxAmount": 0,
+      "total": 1650,
+      "paymentMethod": "Cash",
+      "amountReceived": 2000,
+      "changeGiven": 350,
+      "cashierId": "usr_admin",
+      "cashierName": "Admin Manager",
+      "customerName": "Karim Ullah",
+      "customerPhone": "+880 1819-223344",
+      "status": "completed",
+      "storeId": "store_001"
+    },
+    {
+      "_id": "sale-1004",
+      "invoiceNo": "1004",
+      "createdAt": "2026-10-02T04:11:40.636Z",
+      "items": [
+        {
+          "productId": "prod-2",
+          "productName": "Cooking Oil (1L)",
+          "quantity": 2,
+          "unitPrice": 180,
+          "totalPrice": 360
+        },
+        {
+          "productId": "prod-8",
+          "productName": "Biscuits",
+          "quantity": 4,
+          "unitPrice": 60,
+          "totalPrice": 240
+        },
+        {
+          "productId": "prod-7",
+          "productName": "Tea (250G)",
+          "quantity": 1,
+          "unitPrice": 160,
+          "totalPrice": 160
+        },
+        {
+          "productId": "prod-9",
+          "productName": "Milk (1L)",
+          "quantity": 2,
+          "unitPrice": 110,
+          "totalPrice": 220
+        }
+      ],
+      "subtotal": 980,
+      "discountType": "flat",
+      "discountValue": 0,
+      "discountAmount": 0,
+      "taxAmount": 0,
+      "total": 980,
+      "paymentMethod": "bKash",
+      "cashierId": "usr_cashier",
+      "cashierName": "Tariqul Islam",
+      "customerPhone": "+880 1723-998877",
+      "status": "completed",
+      "storeId": "store_001"
+    },
+    {
+      "_id": "sale-1003",
+      "invoiceNo": "1003",
+      "createdAt": "2026-10-02T03:41:40.636Z",
+      "items": [
+        {
+          "productId": "prod-3",
+          "productName": "Sugar (1KG)",
+          "quantity": 2,
+          "unitPrice": 90,
+          "totalPrice": 180
+        },
+        {
+          "productId": "prod-4",
+          "productName": "Lentil (1KG)",
+          "quantity": 2,
+          "unitPrice": 120,
+          "totalPrice": 240
+        },
+        {
+          "productId": "prod-11",
+          "productName": "Instant Noodles (4-Pack)",
+          "quantity": 2,
+          "unitPrice": 130,
+          "totalPrice": 260
+        },
+        {
+          "productId": "prod-6",
+          "productName": "Salt (1KG)",
+          "quantity": 2,
+          "unitPrice": 40,
+          "totalPrice": 80
+        }
+      ],
+      "subtotal": 760,
+      "discountType": "flat",
+      "discountValue": 0,
+      "discountAmount": 0,
+      "taxAmount": 0,
+      "total": 760,
+      "paymentMethod": "Nagad",
+      "cashierId": "usr_admin",
+      "cashierName": "Admin Manager",
+      "customerPhone": "+880 1911-334455",
+      "status": "completed",
+      "storeId": "store_001"
+    }
+  ],
+  "audit_logs": [
+    {
+      "storeId": "store_002",
+      "userId": "usr_owner_002",
+      "userName": "Tanvir Ahmed",
+      "action": "REFUND_SALE",
+      "details": "Processed refund for invoice #1001 (Amount ৳3700) in store store_002",
+      "_id": "log_1790918576386_511",
+      "timestamp": "2026-10-02T05:22:56.386Z"
+    },
+    {
+      "storeId": "store_002",
+      "userId": "usr_owner_002",
+      "userName": "Tanvir Ahmed",
+      "action": "LOGIN",
+      "details": "User logged in to store store_002 with role Admin",
+      "_id": "log_1790918576362_337",
+      "timestamp": "2026-10-02T05:22:56.362Z"
+    },
+    {
+      "storeId": "store_001",
+      "userId": "usr_admin",
+      "userName": "Admin Manager",
+      "action": "LOGIN",
+      "details": "User logged in to store store_001 with role SuperAdmin",
+      "_id": "log_1790918568966_294",
+      "timestamp": "2026-10-02T05:22:48.966Z"
+    },
+    {
+      "storeId": "store_002",
+      "userId": "usr_cashier_002",
+      "userName": "Kamrul Hasan",
+      "action": "COMPLETE_SALE",
+      "details": "Completed sale invoice #1001 for amount ৳3700 in store store_002",
+      "_id": "log_1790918568846_327",
+      "timestamp": "2026-10-02T05:22:48.846Z"
+    },
+    {
+      "storeId": "store_002",
+      "userId": "usr_cashier_002",
+      "userName": "Kamrul Hasan",
+      "action": "LOGIN",
+      "details": "User logged in to store store_002 with role Cashier",
+      "_id": "log_1790918568820_793",
+      "timestamp": "2026-10-02T05:22:48.820Z"
+    },
+    {
+      "storeId": "store_002",
+      "userId": "usr_owner_002",
+      "userName": "Tanvir Ahmed",
+      "action": "LOGIN",
+      "details": "User logged in to store store_002 with role Admin",
+      "_id": "log_1790918558925_66",
+      "timestamp": "2026-10-02T05:22:38.925Z"
+    },
+    {
+      "storeId": "store_001",
+      "userId": "usr_admin",
+      "userName": "Admin Manager",
+      "action": "LOGIN",
+      "details": "User logged in to store store_001 with role SuperAdmin",
+      "_id": "log_1790918558618_707",
+      "timestamp": "2026-10-02T05:22:38.618Z"
+    },
+    {
+      "storeId": "store_002",
+      "userId": "usr_owner_002",
+      "userName": "Tanvir Ahmed",
+      "action": "LOGIN",
+      "details": "User logged in to store store_002 with role Admin",
+      "_id": "log_1790918552350_976",
+      "timestamp": "2026-10-02T05:22:32.350Z"
+    },
+    {
+      "storeId": "store_001",
+      "userId": "usr_admin",
+      "userName": "Admin Manager",
+      "action": "LOGIN",
+      "details": "User logged in to store store_001 with role SuperAdmin",
+      "_id": "log_1790918552216_434",
+      "timestamp": "2026-10-02T05:22:32.216Z"
+    },
+    {
+      "storeId": "store_002",
+      "userId": "usr_owner_002",
+      "userName": "Tanvir Ahmed",
+      "action": "LOGIN",
+      "details": "User logged in to store store_002 with role Admin",
+      "_id": "log_1790918547817_162",
+      "timestamp": "2026-10-02T05:22:27.817Z"
+    },
+    {
+      "storeId": "store_001",
+      "userId": "usr_admin",
+      "userName": "Admin Manager",
+      "action": "LOGIN",
+      "details": "User logged in to store store_001 with role SuperAdmin",
+      "_id": "log_1790918542939_358",
+      "timestamp": "2026-10-02T05:22:22.939Z"
+    },
+    {
+      "userId": "usr_admin",
+      "userName": "Admin Manager",
+      "action": "LOGIN",
+      "details": "User logged in with role SuperAdmin",
+      "_id": "log_1790916418642",
+      "timestamp": "2026-10-02T04:46:58.642Z",
+      "storeId": "store_001"
+    },
+    {
+      "userId": "usr_admin",
+      "userName": "Admin Manager",
+      "action": "LOGIN",
+      "details": "User logged in with role SuperAdmin",
+      "_id": "log_1790916413229",
+      "timestamp": "2026-10-02T04:46:53.229Z",
+      "storeId": "store_001"
+    },
+    {
+      "_id": "log-1",
+      "userId": "usr_admin",
+      "userName": "Admin Manager",
+      "action": "SYSTEM_INIT",
+      "details": "ShopPOS MongoDB authority and repository initialized.",
+      "timestamp": "2026-10-02T04:46:40.636Z",
+      "storeId": "store_001"
+    }
+  ],
+  "categories": [
+    {
+      "_id": "cat_001_1",
+      "storeId": "store_001",
+      "name": "Grocery",
+      "createdAt": "2026-10-02T05:22:21.777Z"
+    },
+    {
+      "_id": "cat_001_2",
+      "storeId": "store_001",
+      "name": "Beverages",
+      "createdAt": "2026-10-02T05:22:21.777Z"
+    },
+    {
+      "_id": "cat_001_3",
+      "storeId": "store_001",
+      "name": "Snacks",
+      "createdAt": "2026-10-02T05:22:21.777Z"
+    },
+    {
+      "_id": "cat_001_4",
+      "storeId": "store_001",
+      "name": "Dairy & Eggs",
+      "createdAt": "2026-10-02T05:22:21.777Z"
+    },
+    {
+      "_id": "cat_001_5",
+      "storeId": "store_001",
+      "name": "Bakery",
+      "createdAt": "2026-10-02T05:22:21.777Z"
+    },
+    {
+      "_id": "cat_001_6",
+      "storeId": "store_001",
+      "name": "Household",
+      "createdAt": "2026-10-02T05:22:21.777Z"
+    },
+    {
+      "_id": "cat_001_7",
+      "storeId": "store_001",
+      "name": "Personal Care",
+      "createdAt": "2026-10-02T05:22:21.777Z"
+    },
+    {
+      "_id": "cat_001_8",
+      "storeId": "store_001",
+      "name": "Spices & Oils",
+      "createdAt": "2026-10-02T05:22:21.777Z"
+    },
+    {
+      "_id": "cat_002_1",
+      "storeId": "store_002",
+      "name": "Mobile Accessories",
+      "createdAt": "2026-10-02T05:22:21.777Z"
+    },
+    {
+      "_id": "cat_002_2",
+      "storeId": "store_002",
+      "name": "Audio & Headphones",
+      "createdAt": "2026-10-02T05:22:21.777Z"
+    },
+    {
+      "_id": "cat_002_3",
+      "storeId": "store_002",
+      "name": "Power & Cables",
+      "createdAt": "2026-10-02T05:22:21.777Z"
+    },
+    {
+      "_id": "cat_002_4",
+      "storeId": "store_002",
+      "name": "Smart Wearables",
+      "createdAt": "2026-10-02T05:22:21.777Z"
+    },
+    {
+      "_id": "cat_002_5",
+      "storeId": "store_002",
+      "name": "Gaming Accessories",
+      "createdAt": "2026-10-02T05:22:21.777Z"
+    }
+  ]
+}
